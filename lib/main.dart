@@ -1,9 +1,23 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'calculator.dart';
+import 'constants.dart';
+import 'theme.dart';
 import 'widgets.dart';
 
-void main() => runApp(const SushiApp());
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: SushiColors.burgundy,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+  runApp(const SushiApp());
+}
 
 class SushiApp extends StatelessWidget {
   const SushiApp({super.key});
@@ -13,22 +27,7 @@ class SushiApp extends StatelessWidget {
     return MaterialApp(
       title: 'Sushi Calculator',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFC0392B), // vermilion
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardTheme: CardThemeData(
-          color: const Color(0xFF1E1E1E),
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        ),
-      ),
-      theme: ThemeData(useMaterial3: true, brightness: Brightness.dark),
+      theme: buildSushiTheme(),
       home: const HomePage(),
     );
   }
@@ -47,8 +46,6 @@ class _HomePageState extends State<HomePage> {
   final _nigiri = TextEditingController();
   final _rice = TextEditingController();
 
-  static const _titles = ['Maki', 'Nigiri', 'Rice Seasoning'];
-
   double get _makiRice =>
       SushiCalculator.makiUncookedRice(SushiCalculator.parse(_maki.text));
   double get _nigiriRice =>
@@ -65,10 +62,7 @@ class _HomePageState extends State<HomePage> {
   void _refresh() => setState(() {});
 
   void _setRice(double grams) {
-    setState(() {
-      // Rounded to 1 decimal to match what the other tabs display.
-      _rice.text = SushiCalculator.fmt(grams);
-    });
+    setState(() => _rice.text = SushiCalculator.fmt(grams));
   }
 
   @override
@@ -77,136 +71,184 @@ class _HomePageState extends State<HomePage> {
       behavior: HitTestBehavior.translucent,
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(_titles[_tab]),
-          centerTitle: false,
+        body: IndexedStack(
+          index: _tab,
+          children: [_makiTab(), _nigiriTab(), _seasoningTab()],
         ),
-        body: SafeArea(
-          child: IndexedStack(
-            index: _tab,
-            children: [_makiTab(), _nigiriTab(), _seasoningTab()],
-          ),
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: _tab,
-          onDestinationSelected: (i) {
+        bottomNavigationBar: SushiBottomNavigation(
+          index: _tab,
+          onSelected: (i) {
             FocusManager.instance.primaryFocus?.unfocus();
             setState(() => _tab = i);
           },
-          destinations: const [
-            NavigationDestination(
-              icon: _TabIcon('assets/tab_maki.png', selected: false),
-              selectedIcon: _TabIcon('assets/tab_maki.png', selected: true),
-              label: 'Maki',
-            ),
-            NavigationDestination(
-              icon: _TabIcon('assets/tab_nigiri.png', selected: false),
-              selectedIcon: _TabIcon('assets/tab_nigiri.png', selected: true),
-              label: 'Nigiri',
-            ),
-            NavigationDestination(
-              icon: _TabIcon('assets/tab_seasoning.png', selected: false),
-              selectedIcon:
-                  _TabIcon('assets/tab_seasoning.png', selected: true),
-              label: 'Rice Seasoning',
-            ),
-          ],
         ),
       ),
     );
   }
 
-  Widget _scroll(List<Widget> children) => ListView(
-        padding: const EdgeInsets.all(16),
+  /// Header scrolls with the content so the keyboard never squeezes the layout.
+  Widget _page({required Widget header, required List<Widget> children}) =>
+      ListView(
+        padding: EdgeInsets.zero,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        children: children,
+        children: [
+          header,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final c in children) ...[c, const SizedBox(height: 12)],
+              ],
+            ),
+          ),
+        ],
       );
 
-  Widget _makiTab() => _scroll([
-        SectionCard(children: [
-          NumberField(
-            controller: _maki,
-            label: 'Number of maki rolls',
-            suffix: 'rolls',
-            onChanged: _refresh,
-          ),
-          const SizedBox(height: 8),
-          ResultTile(label: 'Uncooked rice', value: _makiRice, unit: 'g'),
-        ]),
-        const SaltwaterCard(),
-      ]);
+  Widget _makiTab() => _page(
+    header: const SushiHeader(
+      color: SushiColors.maki,
+      badge: 'Maki',
+      asset: SushiArt.makiRolls,
+    ),
+    children: [
+      QuantityStepper(
+        controller: _maki,
+        label: 'Number of maki rolls',
+        unit: 'rolls',
+        onChanged: _refresh,
+      ),
+      RiceResultCard(
+        asset: SushiArt.riceBowl,
+        label: 'Uncooked rice',
+        value: _makiRice,
+      ),
+      InfoRow(
+        '${SushiCalculator.fmt(SushiConstants.makiRiceGramsPerRoll)} g of uncooked rice per maki roll.',
+      ),
+      const TunaSaltwaterPanel(),
+      Align(
+        alignment: Alignment.centerRight,
+        child: Image.asset(SushiArt.tunaBlock, height: 80, fit: BoxFit.contain),
+      ),
+    ],
+  );
 
-  Widget _nigiriTab() => _scroll([
-        SectionCard(children: [
-          NumberField(
-            controller: _nigiri,
-            label: 'Number of nigiri pieces',
-            suffix: 'pieces',
-            onChanged: _refresh,
-          ),
-          const SizedBox(height: 8),
-          ResultTile(label: 'Uncooked rice', value: _nigiriRice, unit: 'g'),
-          ResultTile(
-            label: 'Cooked rice (est.)',
-            value: SushiCalculator.nigiriCookedRice(
-                SushiCalculator.parse(_nigiri.text)),
-            unit: 'g',
-            big: false,
-          ),
-        ]),
-        const SaltwaterCard(),
-      ]);
+  Widget _nigiriTab() {
+    final pieces = SushiCalculator.parse(_nigiri.text);
+    return _page(
+      header: const SushiHeader(
+        color: SushiColors.nigiri,
+        badge: 'Nigiri',
+        asset: SushiArt.nigiri,
+      ),
+      children: [
+        QuantityStepper(
+          controller: _nigiri,
+          label: 'Number of nigiri pieces',
+          unit: 'pieces',
+          onChanged: _refresh,
+        ),
+        RiceResultCard(
+          asset: SushiArt.riceBowl,
+          label: 'Uncooked rice',
+          value: _nigiriRice,
+          valueColor: SushiColors.nigiri,
+        ),
+        RiceResultCard(
+          asset: SushiArt.saltBowl,
+          label: 'Cooked rice (est.)',
+          value: SushiCalculator.nigiriCookedRice(pieces),
+          large: false,
+          valueColor: SushiColors.nigiri,
+        ),
+        InfoRow(
+          'â‰ˆ ${SushiCalculator.fmt(SushiConstants.nigiriCookedGramsPerPiece)} g of cooked rice per nigiri. '
+          'Cooked rice is â‰ˆ ${SushiConstants.cookedToUncookedFactor}Ã— the uncooked weight.',
+        ),
+        const TunaSaltwaterPanel(),
+      ],
+    );
+  }
 
   Widget _seasoningTab() {
     final s = SushiCalculator.seasoning(SushiCalculator.parse(_rice.text));
-    return _scroll([
-      SectionCard(children: [
-        NumberField(
+    return _page(
+      header: const SushiHeader(
+        color: SushiColors.seasoning,
+        badge: 'Rice Seasoning',
+        asset: SushiArt.riceTub,
+      ),
+      children: [
+        QuantityStepper(
           controller: _rice,
           label: 'Uncooked rice',
-          suffix: 'g',
+          unit: 'g',
           decimal: true,
+          step: 10,
           onChanged: _refresh,
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            OutlinedButton(
-              onPressed: () => _setRice(_makiRice),
-              child: const Text('Use Maki Amount'),
-            ),
-            OutlinedButton(
-              onPressed: () => _setRice(_nigiriRice),
-              child: const Text('Use Nigiri Amount'),
-            ),
-            FilledButton.tonal(
-              onPressed: () => _setRice(_makiRice + _nigiriRice),
-              child: const Text('Combine Both'),
-            ),
-          ],
+        SeasoningResultRow(
+          asset: SushiArt.vinegar,
+          label: 'Rice vinegar',
+          value: s.vinegarMl,
+          unit: 'ml',
         ),
-      ]),
-      SectionCard(title: 'Seasoning', children: [
-        ResultTile(label: 'Rice vinegar', value: s.vinegarMl, unit: 'ml'),
-        ResultTile(label: 'Sugar', value: s.sugarGrams, unit: 'g'),
-        ResultTile(label: 'Salt', value: s.saltGrams, unit: 'g'),
-      ]),
-    ]);
+        SeasoningResultRow(
+          asset: SushiArt.sugar,
+          label: 'Sugar',
+          value: s.sugarGrams,
+          unit: 'g',
+        ),
+        SeasoningResultRow(
+          asset: SushiArt.saltBowl,
+          label: 'Salt',
+          value: s.saltGrams,
+          unit: 'g',
+        ),
+        InfoRow(
+          'Ratio per ${SushiCalculator.fmt(SushiConstants.seasoningReferenceRiceGrams)} g of uncooked rice: '
+          '${SushiCalculator.fmt(SushiConstants.seasoningVinegarMl)} ml rice vinegar, '
+          '${SushiCalculator.fmt(SushiConstants.seasoningSugarGrams)} g sugar, '
+          '${SushiCalculator.fmt(SushiConstants.seasoningSaltGrams)} g salt.',
+        ),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: QuickActionButton(
+                  asset: SushiArt.navMaki,
+                  label: 'Use Maki Amount',
+                  amount: _makiRice,
+                  color: const Color(0xFFE3EDC2),
+                  onPressed: () => _setRice(_makiRice),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: QuickActionButton(
+                  asset: SushiArt.navNigiri,
+                  label: 'Use Nigiri Amount',
+                  amount: _nigiriRice,
+                  color: const Color(0xFFFFD9BC),
+                  onPressed: () => _setRice(_nigiriRice),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: QuickActionButton(
+                  asset: SushiArt.navRice,
+                  label: 'Combine Both',
+                  amount: _makiRice + _nigiriRice,
+                  color: const Color(0xFFC9E6F7),
+                  onPressed: () => _setRice(_makiRice + _nigiriRice),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
-}
-
-class _TabIcon extends StatelessWidget {
-  const _TabIcon(this.asset, {required this.selected});
-  final String asset;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) => Opacity(
-        opacity: selected ? 1 : 0.6,
-        child: Image.asset(asset,
-            width: 32, height: 32, fit: BoxFit.contain,
-            filterQuality: FilterQuality.medium),
-      );
 }

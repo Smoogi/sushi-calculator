@@ -21,7 +21,8 @@ class SushiCalculator {
       makiUncookedRice(makiRolls) + nigiriUncookedRice(nigiriPieces);
 
   static Seasoning seasoning(double uncookedRiceGrams) {
-    final f = _safe(uncookedRiceGrams) / SushiConstants.seasoningReferenceRiceGrams;
+    final f =
+        _safe(uncookedRiceGrams) / SushiConstants.seasoningReferenceRiceGrams;
     return (
       vinegarMl: f * SushiConstants.seasoningVinegarMl,
       sugarGrams: f * SushiConstants.seasoningSugarGrams,
