@@ -163,8 +163,8 @@ class _HomePageState extends State<HomePage> {
           valueColor: SushiColors.nigiri,
         ),
         InfoRow(
-          'â‰ˆ ${SushiCalculator.fmt(SushiConstants.nigiriCookedGramsPerPiece)} g of cooked rice per nigiri. '
-          'Cooked rice is â‰ˆ ${SushiConstants.cookedToUncookedFactor}Ã— the uncooked weight.',
+          '≈ ${SushiCalculator.fmt(SushiConstants.nigiriCookedGramsPerPiece)} g of cooked rice per nigiri. '
+          'Cooked rice is ≈ ${SushiConstants.cookedToUncookedFactor}× the uncooked weight.',
         ),
         const TunaSaltwaterPanel(),
       ],
