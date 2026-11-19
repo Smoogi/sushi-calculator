@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'calculator.dart';
 import 'widgets.dart';
@@ -95,18 +95,19 @@ class _HomePageState extends State<HomePage> {
           },
           destinations: const [
             NavigationDestination(
-              icon: Icon(Icons.restaurant_outlined),
-              selectedIcon: Icon(Icons.restaurant),
+              icon: _TabIcon('assets/tab_maki.png', selected: false),
+              selectedIcon: _TabIcon('assets/tab_maki.png', selected: true),
               label: 'Maki',
             ),
             NavigationDestination(
-              icon: Icon(Icons.set_meal_outlined),
-              selectedIcon: Icon(Icons.set_meal),
+              icon: _TabIcon('assets/tab_nigiri.png', selected: false),
+              selectedIcon: _TabIcon('assets/tab_nigiri.png', selected: true),
               label: 'Nigiri',
             ),
             NavigationDestination(
-              icon: Icon(Icons.scale_outlined),
-              selectedIcon: Icon(Icons.scale),
+              icon: _TabIcon('assets/tab_seasoning.png', selected: false),
+              selectedIcon:
+                  _TabIcon('assets/tab_seasoning.png', selected: true),
               label: 'Rice Seasoning',
             ),
           ],
@@ -194,4 +195,18 @@ class _HomePageState extends State<HomePage> {
       ]),
     ]);
   }
+}
+
+class _TabIcon extends StatelessWidget {
+  const _TabIcon(this.asset, {required this.selected});
+  final String asset;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) => Opacity(
+        opacity: selected ? 1 : 0.6,
+        child: Image.asset(asset,
+            width: 32, height: 32, fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium),
+      );
 }
